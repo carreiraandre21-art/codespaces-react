@@ -49,7 +49,7 @@ export default function DashboardScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Resumo</Text>
+      <Text style={styles.title}>Andre carreira</Text>
       <Text style={styles.subtitle}>Visão rápida dos principais indicadores escolares.</Text>
 
       {loading ? (

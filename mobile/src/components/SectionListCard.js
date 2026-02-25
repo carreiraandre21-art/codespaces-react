@@ -11,6 +11,6 @@ export default function SectionListCard({ title, children }) {
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: '#fff', borderRadius: 8, padding: 12, marginBottom: 12 },
+  card: { backgroundColor: '#fff2f2', borderRadius: 8, padding: 12, marginBottom: 12 },
   title: { fontWeight: '700', marginBottom: 8 }
 });

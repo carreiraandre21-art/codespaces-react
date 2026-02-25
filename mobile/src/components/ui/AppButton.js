@@ -22,7 +22,7 @@ export default function AppButton({
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={isSecondary ? '#1e3a8a' : '#ffffff'} />
+        <ActivityIndicator color={isSecondary ? '#747474' : '#00ff15'} />
       ) : (
         <Text style={[styles.label, isSecondary ? styles.secondaryLabel : styles.primaryLabel]}>{title}</Text>
       )}
@@ -60,6 +60,6 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
   secondaryLabel: {
-    color: '#1e3a8a',
+    color: '#012d3f',
   },
 });
