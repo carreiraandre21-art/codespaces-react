@@ -1,71 +1,37 @@
-# ConectaEscola
+# 🎓 ConectaEscola
 
-Sistema escolar em tempo real com backend Node.js + Express + Prisma/PostgreSQL e app mobile React Native (Expo).
+Sistema escolar em tempo real com backend Node.js + Express + Prisma (PostgreSQL no Neon) e app mobile React Native (Expo SDK 54).
 
-## Estrutura
+## Estrutura do Projeto
 
-- `backend/` API REST (MVC), autenticação JWT, Socket.io, Prisma, Zod, bcrypt.
-- `mobile/` aplicativo Expo com React Navigation, Context API e Axios.
+- `backend/`: API REST (MVC), autenticação JWT, Socket.io, Prisma, Zod e bcrypt
+- `mobile/`: Aplicativo Expo com React Navigation, Context API e Axios
 
-## Requisitos
+## Como Rodar o Backend
 
-- Node.js 18+
-- PostgreSQL 14+
+1. Entre na pasta: `cd backend`
+2. Instale as dependências: `npm install`
+3. Configure o `.env` com sua `DATABASE_URL` do Neon
+4. Gere o cliente Prisma: `npx prisma generate`
+5. Rode as migrations: `npx prisma migrate dev --name init`
+6. Popule o banco (Seed): `npx prisma db seed`
+7. Inicie o servidor: `npm run dev`
 
-## Backend
+> **Nota:** A API rodará em `http://Seu_IP:4000` (ajuste para o seu IP atual).
 
-```bash
-cd backend
-cp .env.example .env
-npm install
-npm run prisma:generate
-npm run prisma:migrate -- --name init
-npm run prisma:seed
-npm run dev
-```
+### Credenciais de Teste (Seed)
+- **Admin:** `admin@conectaescola.com` / `123456`
+- **Professor:** `ana@conectaescola.com` / `123456`
 
-API em `http://localhost:4000`.
+## 📱 Como Rodar o Mobile
 
-### Credenciais seed
+1. Entre na pasta: `cd mobile`
+2. **Ajuste o IP:** No arquivo `src/api/client.js`, coloque o IP da sua máquina (Ex: `192.168.10.104`).
+3. Instale as dependências: `npm install --force` (Necessário para compatibilidade do React 18 no SDK 54).
+4. Inicie o Expo com reset de cache: `npx expo start -c`
 
-- Admin: `admin@conectaescola.com` / `123456`
-- Professor: `ana@conectaescola.com` / `123456`
-- Responsável: `carlos@email.com` / `123456`
-- Aluno: `marina@email.com` / `123456`
-
-## Mobile
-
-```bash
-cd mobile
-npm install
-npm start
-```
-
-No Expo, configure o backend rodando em `http://localhost:4000` (ajuste `mobile/src/api/client.js` para IP da máquina quando necessário).
-
-## Funcionalidades implementadas
-
-- Autenticação: login, cadastro responsável + aluno, recuperação de senha (stub).
-- Controle de permissões por perfil: admin, professor, responsável e aluno.
-- Módulos: faltas, notas, atividades, provas e ocorrências.
-- Dashboard do responsável/aluno com resumo acadêmico.
-- Notificações em tempo real com Socket.io para responsáveis.
-- Seed com dados iniciais de demonstração.
-
-## Padrão de pastas do backend (MVC)
-
-- `src/controllers`
-- `src/services`
-- `src/routes`
-- `src/middlewares`
-- `src/schemas`
-- `src/config`
-- `src/sockets`
-- `src/utils`
-
-## Produção
-
-- Definir variáveis seguras em `.env`.
-- Executar migrations em pipeline CI/CD.
-- Configurar CORS com domínio real no `CLIENT_URL`.
-- Usar HTTPS e rotação de segredo JWT.
+## ✨ Funcionalidades
+- Controle de permissões (Admin, Professor, Responsável, Aluno)
+- Módulos acadêmicos: Notas, Faltas, Atividades e Ocorrências
+- Notificações em tempo real com Socket.io
+- Dashboard completo para acompanhamento escolar
