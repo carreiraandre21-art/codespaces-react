@@ -1,32 +1,110 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { io } from 'socket.io-client';
 import { api } from '../api/client';
+import InfoCard from '../components/ui/InfoCard';
 import { useAuth } from '../context/AuthContext';
 
 export default function DashboardScreen() {
   const { token } = useAuth();
-  const [summary, setSummary] = useState({ faltasMes: 0, mediaGeral: 0, proximasProvas: [], atividadesPendentes: [] });
+  const [summary, setSummary] = useState({
+    faltasMes: 0,
+    mediaGeral: 0,
+    proximasProvas: [],
+    atividadesPendentes: [],
+  });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!token) return;
-    api.get('/students/1/dashboard', { headers: { Authorization: `Bearer ${token}` } }).then((res) => setSummary(res.data));
+
+    const fetchSummary = async () => {
+      try {
+        const res = await api.get('/students/1/dashboard', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setSummary(res.data);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSummary();
+
     const socket = io('http://localhost:4000', { auth: { token } });
-    socket.on('notification:new', () => {
-      api.get('/students/1/dashboard', { headers: { Authorization: `Bearer ${token}` } }).then((res) => setSummary(res.data));
-    });
+    socket.on('notification:new', fetchSummary);
+
     return () => socket.disconnect();
   }, [token]);
+
+  const cards = useMemo(
+    () => [
+      { label: 'Faltas do mês', value: summary.faltasMes },
+      { label: 'Média geral', value: summary.mediaGeral },
+      { label: 'Próximas provas', value: summary.proximasProvas.length },
+      { label: 'Atividades pendentes', value: summary.atividadesPendentes.length },
+    ],
+    [summary],
+  );
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Resumo</Text>
-      <Text>Faltas do mês: {summary.faltasMes}</Text>
-      <Text>Média geral: {summary.mediaGeral}</Text>
-      <Text>Próximas provas: {summary.proximasProvas.length}</Text>
-      <Text>Atividades pendentes: {summary.atividadesPendentes.length}</Text>
+      <Text style={styles.subtitle}>Visão rápida dos principais indicadores escolares.</Text>
+
+      {loading ? (
+        <View style={styles.loadingWrapper}>
+          <ActivityIndicator size="large" color="#1e3a8a" />
+          <Text style={styles.loadingText}>Carregando seu painel...</Text>
+        </View>
+      ) : (
+        <View style={styles.cardsGrid}>
+          {cards.map((card) => (
+            <InfoCard key={card.label}>
+              <Text style={styles.cardLabel}>{card.label}</Text>
+              <Text style={styles.cardValue}>{card.value}</Text>
+            </InfoCard>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
 
-const styles = StyleSheet.create({ container: { flex: 1, padding: 16, gap: 8 }, title: { fontSize: 22, fontWeight: '700' } });
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f1f5f9',
+    padding: 16,
+    gap: 8,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  subtitle: {
+    color: '#475569',
+    marginBottom: 12,
+  },
+  cardsGrid: {
+    gap: 12,
+  },
+  cardLabel: {
+    color: '#475569',
+    fontSize: 14,
+  },
+  cardValue: {
+    fontSize: 30,
+    color: '#1e3a8a',
+    fontWeight: '800',
+  },
+  loadingWrapper: {
+    marginTop: 22,
+    alignItems: 'center',
+    gap: 10,
+  },
+  loadingText: {
+    color: '#475569',
+  },
+});
