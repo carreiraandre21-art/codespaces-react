@@ -1,0 +1,172 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  TEACHER
+  PARENT
+  STUDENT
+}
+
+enum ActivityStatus {
+  PENDING
+  DELIVERED
+}
+
+enum OccurrenceType {
+  ADVERTENCIA
+  SUSPENSAO
+  COMUNICADO
+}
+
+model User {
+  id            Int            @id @default(autoincrement())
+  name          String
+  email         String         @unique
+  password      String
+  role          UserRole
+  createdAt     DateTime       @default(now())
+  parent        Parent?
+  student       Student?
+  teacher       Teacher?
+  notifications Notification[]
+}
+
+model Parent {
+  id       Int       @id @default(autoincrement())
+  userId   Int       @unique
+  phone    String
+  user     User      @relation(fields: [userId], references: [id])
+  students Student[]
+}
+
+model Teacher {
+  id          Int          @id @default(autoincrement())
+  userId      Int          @unique
+  user        User         @relation(fields: [userId], references: [id])
+  subjects    Subject[]
+  absences    Absence[]
+  grades      Grade[]
+  activities  Activity[]
+  exams       Exam[]
+}
+
+model Class {
+  id        Int        @id @default(autoincrement())
+  name      String
+  year      Int
+  students  Student[]
+  subjects  Subject[]
+  activities Activity[]
+  exams     Exam[]
+}
+
+model Student {
+  id           Int           @id @default(autoincrement())
+  userId       Int           @unique
+  parentId     Int
+  classId      Int
+  registration String        @unique
+  birthDate    DateTime
+  user         User          @relation(fields: [userId], references: [id])
+  parent       Parent        @relation(fields: [parentId], references: [id])
+  class        Class         @relation(fields: [classId], references: [id])
+  grades       Grade[]
+  absences     Absence[]
+  occurrences  Occurrence[]
+}
+
+model Subject {
+  id         Int        @id @default(autoincrement())
+  name       String
+  classId    Int
+  teacherId  Int
+  class      Class      @relation(fields: [classId], references: [id])
+  teacher    Teacher    @relation(fields: [teacherId], references: [id])
+  grades     Grade[]
+  absences   Absence[]
+  activities Activity[]
+  exams      Exam[]
+}
+
+model Grade {
+  id        Int      @id @default(autoincrement())
+  studentId Int
+  subjectId Int
+  teacherId Int
+  examId    Int?
+  value     Float
+  term      String
+  createdAt DateTime @default(now())
+  student   Student  @relation(fields: [studentId], references: [id])
+  subject   Subject  @relation(fields: [subjectId], references: [id])
+  teacher   Teacher  @relation(fields: [teacherId], references: [id])
+  exam      Exam?    @relation(fields: [examId], references: [id])
+}
+
+model Absence {
+  id        Int      @id @default(autoincrement())
+  studentId Int
+  subjectId Int
+  teacherId Int
+  date      DateTime
+  reason    String?
+  student   Student  @relation(fields: [studentId], references: [id])
+  subject   Subject  @relation(fields: [subjectId], references: [id])
+  teacher   Teacher  @relation(fields: [teacherId], references: [id])
+}
+
+model Activity {
+  id          Int            @id @default(autoincrement())
+  title       String
+  description String
+  dueDate     DateTime
+  status      ActivityStatus @default(PENDING)
+  classId     Int
+  subjectId   Int
+  teacherId   Int
+  class       Class          @relation(fields: [classId], references: [id])
+  subject     Subject        @relation(fields: [subjectId], references: [id])
+  teacher     Teacher        @relation(fields: [teacherId], references: [id])
+}
+
+model Exam {
+  id          Int      @id @default(autoincrement())
+  title       String
+  date        DateTime
+  description String?
+  classId     Int
+  subjectId   Int
+  teacherId   Int
+  class       Class    @relation(fields: [classId], references: [id])
+  subject     Subject  @relation(fields: [subjectId], references: [id])
+  teacher     Teacher  @relation(fields: [teacherId], references: [id])
+  grades      Grade[]
+}
+
+model Occurrence {
+  id          Int            @id @default(autoincrement())
+  studentId   Int
+  type        OccurrenceType
+  description String
+  createdById Int
+  createdAt   DateTime       @default(now())
+  student     Student        @relation(fields: [studentId], references: [id])
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  title     String
+  message   String
+  type      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}

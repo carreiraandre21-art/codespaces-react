@@ -1,0 +1,9 @@
+{
+  "expo": {
+    "name": "ConectaEscola",
+    "slug": "conectaescola",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light"
+  }
+}
