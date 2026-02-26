@@ -1,22 +1,29 @@
-const jwt = require('jsonwebtoken');
+﻿const { Server } = require('socket.io');
+const { verifyAccessToken } = require('./utils/jwt');
 
-const registerSocket = (io) => {
+const createSocket = (server) => {
+  const io = new Server(server, {
+    cors: { origin: '*' }
+  });
+
   io.use((socket, next) => {
-    const token = socket.handshake.auth?.token;
-    if (!token) return next(new Error('Não autorizado'));
     try {
-      const user = jwt.verify(token, process.env.JWT_SECRET);
-      socket.user = user;
+      const token = socket.handshake.auth?.token;
+      if (!token) return next(new Error('UNAUTHORIZED'));
+      const decoded = verifyAccessToken(token);
+      socket.user = decoded;
       return next();
-    } catch (error) {
-      return next(new Error('Token inválido'));
+    } catch {
+      return next(new Error('UNAUTHORIZED'));
     }
   });
 
   io.on('connection', (socket) => {
-    socket.join(`user:${socket.user.id}`);
-    socket.on('disconnect', () => {});
+    if (socket.user?.userId) socket.join(`user:${socket.user.userId}`);
+    if (socket.user?.schoolId) socket.join(`school:${socket.user.schoolId}`);
   });
+
+  return io;
 };
 
-module.exports = registerSocket;
+module.exports = createSocket;

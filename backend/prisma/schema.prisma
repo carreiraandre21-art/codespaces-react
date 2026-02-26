@@ -1,4 +1,4 @@
-generator client {
+﻿generator client {
   provider = "prisma-client-js"
 }
 
@@ -8,7 +8,8 @@ datasource db {
 }
 
 enum UserRole {
-  ADMIN
+  SAAS_ADMIN
+  SCHOOL_ADMIN
   TEACHER
   PARENT
   STUDENT
@@ -17,156 +18,291 @@ enum UserRole {
 enum ActivityStatus {
   PENDING
   DELIVERED
+  LATE
 }
 
 enum OccurrenceType {
-  ADVERTENCIA
-  SUSPENSAO
-  COMUNICADO
+  WARNING
+  SUSPENSION
+  NOTICE
+  PRAISE
+}
+
+model School {
+  id          String   @id @default(uuid())
+  name        String
+  cnpj        String   @unique
+  plan        String
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       User[]
+  classes     Class[]
+  students    Student[]
+  teachers    Teacher[]
+  parents     Parent[]
+  subjects    Subject[]
+  activities  Activity[]
+  absences    Absence[]
+  grades      Grade[]
+  exams       Exam[]
+  occurrences Occurrence[]
+  refreshTokens RefreshToken[]
+  auditLogs   AuditLog[]
+
+  @@index([active])
 }
 
 model User {
-  id            Int            @id @default(autoincrement())
-  name          String
-  email         String         @unique
-  password      String
-  role          UserRole
-  createdAt     DateTime       @default(now())
-  parent        Parent?
-  student       Student?
-  teacher       Teacher?
-  notifications Notification[]
+  id              String    @id @default(uuid())
+  schoolId        String?
+  name            String
+  email           String    @unique
+  passwordHash    String
+  role            UserRole
+  active          Boolean   @default(true)
+  lastAccessAt    DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  school          School?   @relation(fields: [schoolId], references: [id])
+  parent          Parent?
+  student         Student?
+  teacher         Teacher?
+  notifications   Notification[]
+  refreshTokens   RefreshToken[]
+  audits          AuditLog[]
+
+  @@index([schoolId, role])
+  @@index([role, active])
+}
+
+model RefreshToken {
+  id         String   @id @default(uuid())
+  schoolId   String?
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime @default(now())
+
+  school     School?  @relation(fields: [schoolId], references: [id])
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@index([schoolId])
 }
 
 model Parent {
-  id       Int       @id @default(autoincrement())
-  userId   Int       @unique
-  phone    String
-  user     User      @relation(fields: [userId], references: [id])
-  students Student[]
+  id        String    @id @default(uuid())
+  schoolId  String
+  userId    String    @unique
+  phone     String
+  createdAt DateTime  @default(now())
+
+  school    School    @relation(fields: [schoolId], references: [id])
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  students  Student[]
+
+  @@index([schoolId])
 }
 
 model Teacher {
-  id          Int          @id @default(autoincrement())
-  userId      Int          @unique
-  user        User         @relation(fields: [userId], references: [id])
+  id          String     @id @default(uuid())
+  schoolId    String
+  userId      String     @unique
+  createdAt   DateTime   @default(now())
+
+  school      School     @relation(fields: [schoolId], references: [id])
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   subjects    Subject[]
   absences    Absence[]
   grades      Grade[]
   activities  Activity[]
   exams       Exam[]
+
+  @@index([schoolId])
 }
 
 model Class {
-  id        Int        @id @default(autoincrement())
-  name      String
-  year      Int
-  students  Student[]
-  subjects  Subject[]
-  activities Activity[]
-  exams     Exam[]
+  id          String     @id @default(uuid())
+  schoolId    String
+  name        String
+  year        Int
+  createdAt   DateTime   @default(now())
+
+  school      School     @relation(fields: [schoolId], references: [id])
+  students    Student[]
+  subjects    Subject[]
+  activities  Activity[]
+  exams       Exam[]
+
+  @@index([schoolId, year])
 }
 
 model Student {
-  id           Int           @id @default(autoincrement())
-  userId       Int           @unique
-  parentId     Int
-  classId      Int
-  registration String        @unique
+  id           String       @id @default(uuid())
+  schoolId     String
+  userId       String       @unique
+  parentId     String
+  classId      String
+  registration String
   birthDate    DateTime
-  user         User          @relation(fields: [userId], references: [id])
-  parent       Parent        @relation(fields: [parentId], references: [id])
-  class        Class         @relation(fields: [classId], references: [id])
+  createdAt    DateTime     @default(now())
+
+  school       School       @relation(fields: [schoolId], references: [id])
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent       Parent       @relation(fields: [parentId], references: [id])
+  class        Class        @relation(fields: [classId], references: [id])
   grades       Grade[]
   absences     Absence[]
   occurrences  Occurrence[]
+
+  @@unique([schoolId, registration])
+  @@index([schoolId, classId])
 }
 
 model Subject {
-  id         Int        @id @default(autoincrement())
-  name       String
-  classId    Int
-  teacherId  Int
-  class      Class      @relation(fields: [classId], references: [id])
-  teacher    Teacher    @relation(fields: [teacherId], references: [id])
-  grades     Grade[]
-  absences   Absence[]
-  activities Activity[]
-  exams      Exam[]
+  id          String      @id @default(uuid())
+  schoolId    String
+  name        String
+  classId     String
+  teacherId   String
+  createdAt   DateTime    @default(now())
+
+  school      School      @relation(fields: [schoolId], references: [id])
+  class       Class       @relation(fields: [classId], references: [id])
+  teacher     Teacher     @relation(fields: [teacherId], references: [id])
+  grades      Grade[]
+  absences    Absence[]
+  activities  Activity[]
+  exams       Exam[]
+
+  @@index([schoolId, classId])
 }
 
 model Grade {
-  id        Int      @id @default(autoincrement())
-  studentId Int
-  subjectId Int
-  teacherId Int
-  examId    Int?
-  value     Float
-  term      String
-  createdAt DateTime @default(now())
-  student   Student  @relation(fields: [studentId], references: [id])
-  subject   Subject  @relation(fields: [subjectId], references: [id])
-  teacher   Teacher  @relation(fields: [teacherId], references: [id])
-  exam      Exam?    @relation(fields: [examId], references: [id])
+  id         String    @id @default(uuid())
+  schoolId   String
+  studentId  String
+  subjectId  String
+  teacherId  String
+  examId     String?
+  value      Float
+  term       String
+  createdAt  DateTime  @default(now())
+
+  school     School    @relation(fields: [schoolId], references: [id])
+  student    Student   @relation(fields: [studentId], references: [id])
+  subject    Subject   @relation(fields: [subjectId], references: [id])
+  teacher    Teacher   @relation(fields: [teacherId], references: [id])
+  exam       Exam?     @relation(fields: [examId], references: [id])
+
+  @@index([schoolId, studentId])
+  @@index([schoolId, subjectId, term])
 }
 
 model Absence {
-  id        Int      @id @default(autoincrement())
-  studentId Int
-  subjectId Int
-  teacherId Int
-  date      DateTime
-  reason    String?
-  student   Student  @relation(fields: [studentId], references: [id])
-  subject   Subject  @relation(fields: [subjectId], references: [id])
-  teacher   Teacher  @relation(fields: [teacherId], references: [id])
+  id         String    @id @default(uuid())
+  schoolId   String
+  studentId  String
+  subjectId  String
+  teacherId  String
+  date       DateTime
+  reason     String?
+
+  school     School    @relation(fields: [schoolId], references: [id])
+  student    Student   @relation(fields: [studentId], references: [id])
+  subject    Subject   @relation(fields: [subjectId], references: [id])
+  teacher    Teacher   @relation(fields: [teacherId], references: [id])
+
+  @@index([schoolId, studentId, date])
 }
 
 model Activity {
-  id          Int            @id @default(autoincrement())
+  id          String         @id @default(uuid())
+  schoolId    String
   title       String
   description String
   dueDate     DateTime
   status      ActivityStatus @default(PENDING)
-  classId     Int
-  subjectId   Int
-  teacherId   Int
+  classId     String
+  subjectId   String
+  teacherId   String
+  createdAt   DateTime       @default(now())
+
+  school      School         @relation(fields: [schoolId], references: [id])
   class       Class          @relation(fields: [classId], references: [id])
   subject     Subject        @relation(fields: [subjectId], references: [id])
   teacher     Teacher        @relation(fields: [teacherId], references: [id])
+
+  @@index([schoolId, classId, dueDate])
 }
 
 model Exam {
-  id          Int      @id @default(autoincrement())
+  id          String    @id @default(uuid())
+  schoolId    String
   title       String
   date        DateTime
   description String?
-  classId     Int
-  subjectId   Int
-  teacherId   Int
-  class       Class    @relation(fields: [classId], references: [id])
-  subject     Subject  @relation(fields: [subjectId], references: [id])
-  teacher     Teacher  @relation(fields: [teacherId], references: [id])
+  classId     String
+  subjectId   String
+  teacherId   String
+  createdAt   DateTime  @default(now())
+
+  school      School    @relation(fields: [schoolId], references: [id])
+  class       Class     @relation(fields: [classId], references: [id])
+  subject     Subject   @relation(fields: [subjectId], references: [id])
+  teacher     Teacher   @relation(fields: [teacherId], references: [id])
   grades      Grade[]
+
+  @@index([schoolId, classId, date])
 }
 
 model Occurrence {
-  id          Int            @id @default(autoincrement())
-  studentId   Int
+  id          String         @id @default(uuid())
+  schoolId    String
+  studentId   String
   type        OccurrenceType
   description String
-  createdById Int
+  createdById String
   createdAt   DateTime       @default(now())
+
+  school      School         @relation(fields: [schoolId], references: [id])
   student     Student        @relation(fields: [studentId], references: [id])
+
+  @@index([schoolId, studentId, createdAt])
 }
 
 model Notification {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  title     String
-  message   String
-  type      String
-  read      Boolean  @default(false)
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id])
+  id         String   @id @default(uuid())
+  userId     String
+  title      String
+  message    String
+  type       String
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read, createdAt])
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  schoolId    String?
+  userId      String?
+  action      String
+  module      String
+  metadata    Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  school      School?  @relation(fields: [schoolId], references: [id])
+  user        User?    @relation(fields: [userId], references: [id])
+
+  @@index([schoolId, module, createdAt])
+  @@index([userId, createdAt])
 }

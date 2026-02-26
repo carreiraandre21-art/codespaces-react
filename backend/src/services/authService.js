@@ -1,57 +1,57 @@
-const prisma = require('../config/prisma');
-const { hashPassword, comparePassword, signToken } = require('../utils/security');
-
-const registerParentAndStudent = async ({ parent, student }) => {
-  const existing = await prisma.user.findUnique({ where: { email: parent.email } });
-  if (existing) throw new Error('Email já cadastrado.');
-
-  const parentUser = await prisma.user.create({
-    data: {
-      name: parent.name,
-      email: parent.email,
-      password: await hashPassword(parent.password),
-      role: 'PARENT',
-      parent: { create: { phone: parent.phone } }
-    },
-    include: { parent: true }
-  });
-
-  const studentUser = await prisma.user.create({
-    data: {
-      name: student.name,
-      email: `${student.registration}@aluno.conectaescola.local`,
-      password: await hashPassword(student.registration),
-      role: 'STUDENT',
-      student: {
-        create: {
-          registration: student.registration,
-          birthDate: new Date(student.birthDate),
-          classId: student.classId,
-          parentId: parentUser.parent.id
-        }
-      }
-    }
-  });
-
-  return { parentUser, studentUser };
-};
+﻿const AppError = require('../utils/AppError');
+const userRepository = require('../repositories/userRepository');
+const refreshTokenRepository = require('../repositories/refreshTokenRepository');
+const { comparePassword } = require('../utils/hash');
+const { signAccessToken, signRefreshToken, verifyRefreshToken, hashToken } = require('../utils/jwt');
 
 const login = async ({ email, password }) => {
-  const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) throw new Error('Credenciais inválidas.');
+  const user = await userRepository.findByEmail(email);
+  if (!user || !user.active) throw new AppError('Credenciais invalidas', 401, 'INVALID_CREDENTIALS');
 
-  const validPassword = await comparePassword(password, user.password);
-  if (!validPassword) throw new Error('Credenciais inválidas.');
+  const valid = await comparePassword(password, user.passwordHash);
+  if (!valid) throw new AppError('Credenciais invalidas', 401, 'INVALID_CREDENTIALS');
 
-  const token = signToken({ id: user.id, role: user.role, email: user.email });
-  return { token, user: { id: user.id, name: user.name, role: user.role, email: user.email } };
+  const tokenPayload = { userId: user.id, role: user.role, schoolId: user.schoolId };
+  const accessToken = signAccessToken(tokenPayload);
+  const refreshToken = signRefreshToken(tokenPayload);
+
+  await refreshTokenRepository.createRefreshToken({
+    schoolId: user.schoolId,
+    userId: user.id,
+    tokenHash: hashToken(refreshToken),
+    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+  });
+
+  return {
+    accessToken,
+    refreshToken,
+    user: {
+      id: user.id,
+      schoolId: user.schoolId,
+      name: user.name,
+      email: user.email,
+      role: user.role
+    }
+  };
 };
 
-const forgotPassword = async ({ email }) => {
-  const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) return { message: 'Se o email existir, instruções foram enviadas.' };
+const refresh = async (rawRefreshToken) => {
+  const decoded = verifyRefreshToken(rawRefreshToken);
+  const tokenHash = hashToken(rawRefreshToken);
+  const stored = await refreshTokenRepository.findRefreshToken(tokenHash);
 
-  return { message: `Recuperação solicitada para ${email}. Integre com provedor de email.` };
+  if (!stored || stored.revokedAt || stored.expiresAt < new Date()) {
+    throw new AppError('Refresh token invalido', 401, 'INVALID_REFRESH_TOKEN');
+  }
+
+  const accessToken = signAccessToken({ userId: decoded.userId, role: decoded.role, schoolId: decoded.schoolId });
+  return { accessToken };
 };
 
-module.exports = { registerParentAndStudent, login, forgotPassword };
+const logout = async (rawRefreshToken) => {
+  const tokenHash = hashToken(rawRefreshToken);
+  const stored = await refreshTokenRepository.findRefreshToken(tokenHash);
+  if (stored && !stored.revokedAt) await refreshTokenRepository.revokeRefreshToken(stored.id);
+};
+
+module.exports = { login, refresh, logout };
