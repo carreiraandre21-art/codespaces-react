@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { io } from 'socket.io-client';
-import { api } from '../api/client';
+import { api, API_HOST } from '../api/client';
 import InfoCard from '../components/ui/InfoCard';
 import { useAuth } from '../context/AuthContext';
 
@@ -20,7 +20,7 @@ export default function DashboardScreen() {
 
     const fetchSummary = async () => {
       try {
-        const res = await api.get('/students/1/dashboard', {
+        const res = await api.get('/students/3/dashboard', {
           headers: { Authorization: `Bearer ${token}` },
         });
         setSummary(res.data);
@@ -31,7 +31,7 @@ export default function DashboardScreen() {
 
     fetchSummary();
 
-    const socket = io('http://localhost:4000', { auth: { token } });
+    const socket = io(API_HOST, { auth: { token } });
     socket.on('notification:new', fetchSummary);
 
     return () => socket.disconnect();

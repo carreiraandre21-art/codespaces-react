@@ -1,7 +1,38 @@
 const prisma = require('../config/prisma');
 const { notifyParentByStudent } = require('./notificationService');
 
-const createAbsence = async (teacherId, payload) => {
+const resolveTeacherId = async (actor, payload) => {
+  if (actor.role === 'TEACHER') {
+    const teacher = await prisma.teacher.findUnique({
+      where: { userId: actor.id },
+      select: { id: true }
+    });
+    if (!teacher) throw new Error('Professor não encontrado para este usuário.');
+    return teacher.id;
+  }
+
+  if (actor.role === 'ADMIN') {
+    if (payload.subjectId) {
+      const subject = await prisma.subject.findUnique({
+        where: { id: payload.subjectId },
+        select: { teacherId: true }
+      });
+      if (subject?.teacherId) return subject.teacherId;
+    }
+
+    const fallbackTeacher = await prisma.teacher.findFirst({
+      orderBy: { id: 'asc' },
+      select: { id: true }
+    });
+    if (!fallbackTeacher) throw new Error('Nenhum professor cadastrado para registrar o lançamento.');
+    return fallbackTeacher.id;
+  }
+
+  throw new Error('Perfil sem permissão para registrar lançamentos.');
+};
+
+const createAbsence = async (actor, payload) => {
+  const teacherId = await resolveTeacherId(actor, payload);
   const absence = await prisma.absence.create({
     data: { ...payload, teacherId, date: new Date(payload.date) }
   });
@@ -9,7 +40,8 @@ const createAbsence = async (teacherId, payload) => {
   return absence;
 };
 
-const createGrade = async (teacherId, payload) => {
+const createGrade = async (actor, payload) => {
+  const teacherId = await resolveTeacherId(actor, payload);
   const grade = await prisma.grade.create({ data: { ...payload, teacherId } });
   await notifyParentByStudent(payload.studentId, 'Nova nota lançada', `Nota ${payload.value} foi lançada.`, 'GRADE');
   return grade;

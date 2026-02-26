@@ -51,14 +51,14 @@ export default function ExamsScreen({ navigation }) {
         return;
       }
 
-      const response = await api.get('/exams/student', {
+      const response = await api.get('/students/3/full', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
       console.log('Dados das Provas:', response.data);
-      setExams(Array.isArray(response.data) ? response.data : []);
+      setExams(Array.isArray(response.data?.exams) ? response.data.exams : []);
     } catch (error) {
       console.error('Erro ao carregar provas:', error.response?.data || error.message);
       setExams([]);

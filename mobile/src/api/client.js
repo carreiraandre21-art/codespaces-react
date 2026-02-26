@@ -2,9 +2,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
 const TOKEN_STORAGE_KEY = 'token';
+export const API_HOST = 'http://192.168.10.104:4000';
 
 export const api = axios.create({
-  baseURL: 'http://192.168.10.104:4000/api'
+  baseURL: `${API_HOST}/api`
 });
 
 api.interceptors.request.use(async (config) => {
@@ -19,5 +20,5 @@ api.interceptors.request.use(async (config) => {
 });
 
 export const authApi = axios.create({
-  baseURL: 'http://192.168.10.104:4000/api/auth'
+  baseURL: `${API_HOST}/api/auth`
 });

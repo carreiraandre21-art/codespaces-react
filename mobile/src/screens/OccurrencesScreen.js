@@ -8,7 +8,7 @@ export default function OccurrencesScreen() {
   const [items, setItems] = useState([]);
   useEffect(() => {
     if (!token) return;
-    api.get('/students/1/full', { headers: { Authorization: `Bearer ${token}` } }).then((r) => setItems(r.data.occurrences));
+    api.get('/students/3/full', { headers: { Authorization: `Bearer ${token}` } }).then((r) => setItems(r.data.occurrences));
   }, [token]);
   return <FlatList data={items} keyExtractor={(i) => String(i.id)} renderItem={({ item }) => <Text>{item.type}: {item.description}</Text>} contentContainerStyle={{ padding: 16, gap: 8 }} />;
 }
