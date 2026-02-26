@@ -49,7 +49,7 @@ export default function DashboardScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Andre carreira</Text>
+      <Text style={styles.title}>PAIEN COC JEAN PIAGE </Text>
       <Text style={styles.subtitle}>Visão rápida dos principais indicadores escolares.</Text>
 
       {loading ? (
@@ -74,14 +74,14 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: '#ffffff',
     padding: 16,
     gap: 8,
   },
   title: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#0f172a',
+    color: '#1eff00',
   },
   subtitle: {
     color: '#475569',
