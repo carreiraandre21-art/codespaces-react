@@ -1,0 +1,94 @@
+name: Neon Preview Branch
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, closed]
+
+jobs:
+  create_neon_branch:
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create or reuse Neon branch for this PR
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+
+          BRANCH_NAME="pr-${PR_NUMBER}"
+          API_ROOT="https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}"
+
+          BRANCHES_JSON="$(curl -fsSL \
+            -H "Authorization: Bearer ${NEON_API_KEY}" \
+            "${API_ROOT}/branches")"
+
+          EXISTING_BRANCH_ID="$(node -e '
+            const data = JSON.parse(process.argv[1]);
+            const name = process.argv[2];
+            const found = (data.branches || []).find((b) => b.name === name);
+            process.stdout.write(found ? String(found.id) : "");
+          ' "$BRANCHES_JSON" "$BRANCH_NAME")"
+
+          if [ -n "$EXISTING_BRANCH_ID" ]; then
+            echo "Neon branch already exists: ${BRANCH_NAME} (${EXISTING_BRANCH_ID})"
+            exit 0
+          fi
+
+          PARENT_BRANCH_ID="$(node -e '
+            const data = JSON.parse(process.argv[1]);
+            const branches = data.branches || [];
+            const preferred =
+              branches.find((b) => b.default === true) ||
+              branches.find((b) => b.primary === true) ||
+              branches.find((b) => b.name === "main") ||
+              branches[0];
+            if (!preferred?.id) process.exit(1);
+            process.stdout.write(String(preferred.id));
+          ' "$BRANCHES_JSON")"
+
+          curl -fsSL -X POST \
+            -H "Authorization: Bearer ${NEON_API_KEY}" \
+            -H "Content-Type: application/json" \
+            "${API_ROOT}/branches" \
+            -d "{\"branch\":{\"name\":\"${BRANCH_NAME}\",\"parent_id\":\"${PARENT_BRANCH_ID}\"}}"
+
+          echo "Created Neon branch: ${BRANCH_NAME}"
+
+  delete_neon_branch:
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete Neon branch for this PR
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+
+          BRANCH_NAME="pr-${PR_NUMBER}"
+          API_ROOT="https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}"
+
+          BRANCHES_JSON="$(curl -fsSL \
+            -H "Authorization: Bearer ${NEON_API_KEY}" \
+            "${API_ROOT}/branches")"
+
+          BRANCH_ID="$(node -e '
+            const data = JSON.parse(process.argv[1]);
+            const name = process.argv[2];
+            const found = (data.branches || []).find((b) => b.name === name);
+            process.stdout.write(found ? String(found.id) : "");
+          ' "$BRANCHES_JSON" "$BRANCH_NAME")"
+
+          if [ -z "$BRANCH_ID" ]; then
+            echo "No Neon branch found for ${BRANCH_NAME}. Nothing to delete."
+            exit 0
+          fi
+
+          curl -fsSL -X DELETE \
+            -H "Authorization: Bearer ${NEON_API_KEY}" \
+            "${API_ROOT}/branches/${BRANCH_ID}"
+
+          echo "Deleted Neon branch: ${BRANCH_NAME}"
